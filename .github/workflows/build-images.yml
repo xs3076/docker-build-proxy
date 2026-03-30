@@ -1,20 +1,17 @@
-name: Manual Build & Push to Aliyun
+name: Manual Build & Push (Flexible Folder)
 
 on:
   workflow_dispatch:
     inputs:
       image_folder:
-        description: '项目文件夹 (需包含 Dockerfile)'
+        description: '请输入要构建的文件夹名称 (例如: java-fonts)'
         required: true
-        type: choice
-        options:
-          - java-fonts
-          - python-base
-          - node-runtime
+        type: string  # 修改为 string，支持手动输入
       image_tag:
         description: '镜像版本号'
         required: true
         default: 'latest'
+        type: string
 
 jobs:
   build-and-push:
@@ -23,7 +20,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 登录阿里云 (使用你之前的 Secrets)
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
@@ -34,18 +30,16 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 2. 构建并推送
       - name: Build and Push
         uses: docker/build-push-action@v5
         with:
-          # 上下文只指向选中的文件夹，构建更快
+          # 使用用户手动输入的文件夹路径
           context: ./${{ github.event.inputs.image_folder }}
           file: ./${{ github.event.inputs.image_folder }}/Dockerfile
           push: true
-          # 自动生成 Tag：阿里云地址/命名空间/文件夹名:版本号
+          # 镜像名会根据你填写的文件夹名动态生成
           tags: |
             ${{ secrets.ALIYUN_REGISTRY }}/songxuan/${{ github.event.inputs.image_folder }}:${{ github.event.inputs.image_tag }}
             ${{ secrets.ALIYUN_REGISTRY }}/songxuan/${{ github.event.inputs.image_folder }}:latest
-          # 开启缓存，下次构建相同步骤（如安装包）会飞快
           cache-from: type=gha
           cache-to: type=gha,mode=max
